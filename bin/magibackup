@@ -95,6 +95,7 @@ class Drive:
             if result:
                 break
 
+# Finds a drive object by drive ID
 def findDrive(drives, drivetofind):
     for drive in drives:
         if drive.id == drivetofind:
@@ -164,7 +165,7 @@ class Backup:
 ################################################################################
 # Runs the backup for the given configuration
 
-def flexbackup(hosts, drives, runbackup = None):
+def backup(hosts, drives, runbackup = None):
     backupdrive = findDrive(drives, runbackup)
     if not backupdrive:
         print "Backup drive %s not found" % (runbackup)
@@ -192,4 +193,4 @@ if len(sys.argv) != 2:
         print "%s on %s" % (drive.id, " ".join(mountedon))
 else:
     # Run the backup for the given drive
-    flexbackup(hosts, drives, runbackup = sys.argv[1])
+    backup(hosts, drives, runbackup = sys.argv[1])
