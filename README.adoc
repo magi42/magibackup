@@ -45,6 +45,75 @@ hosts = [LocalHost(mountroot="/media"),
          RemoteHost("otherhostname", mountroot="/media/myuserid")]
 ----
 
+=== Drive Definition
+
+Each backup drive must be listed as a *Drive* object in the `drives` list.
+The drive definitions include the backups that can be done to the drive.
+
+The first parameter defines the drive ID by which it is expected to be mounted.
+
+The other parameters are:
+
+`volumes`::
+List of drive volumes to be mounted.
+See <<configuration.volume>>.
+
+`hosts`::
+List of hosts where this drive can be mounted.
+The hosts are identified by their hostnames.
+
+`backups`::
+List of backups to be done to the drive.
+See <<configuration.backup>>.
+
+For example:
+
+[source, Python]
+----
+drives = [Drive("SG2TB2016",
+                volumes = [PlainVolume("/"),
+                           # Not supported currently
+                           CryptVolume("/.encfs", "/mirror", "password123")],
+                hosts = ["localhost", "otherhostname"],
+                backups = [
+                    Backup(["/home/myuserid/video"],
+                           target = "/",
+                           excludes = ["*~", "*/4k/*"])
+                    ])]
+----
+
+See more examples in the `magibackuprc.py` configuration template.
+
+[[configuration.volume]]
+=== Volume Definition
+
+Volume types are:
+
+*PlainVolume*::
+Unencrypted volume.
+The first parameter gives the relative path to the mount point.
+For example, if `mountroot` is `/media` and the relative path is `/`, the plain volume defined in the following configuration would be mounted at `/media/SG2TB2016`.
+
+*CryptVolume* ::
+EncFS encrypted volume.
+Not implemented yet.
+
+[[configuration.backup]]
+=== Backup Definition
+
+Each backup must be listed as a *Backup* object in the `backups` list.
+
+The first parameter for the constructor is a list of source directories that are to be backed up.
+
+Other parameters are:
+
+`target`::
+Target directory relative to the mount point of the drive.
+
+`excludes`::
+Filename patterns to be excluded from the backup.
+The pattern syntax is the rsync exclude pattern syntax.
+
 == Running
 
 The backup drives must be mounted first.
