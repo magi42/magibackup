@@ -1,0 +1,195 @@
+#!/usr/bin/python
+
+import sys, os
+
+################################################################################
+# Utility methods
+
+# Runs a shell command
+# The "onfail" function is called on failure
+# TODO Remote execution is currently not supported
+def _command(cmd, remote=None, onfail=None):
+    result = os.system(cmd)
+    if result != 0:
+        print "Command failed: " + cmd
+        if onfail != None:
+            onfail(result)
+    return result
+
+# Gets the first item in the list that matches the given condition
+def getfirst(predicate, list):
+    for item in list:
+        if predicate(item):
+            return item
+    return None
+
+################################################################################
+class Host:
+    # TODO Not implemented yet
+    def mountencfs(mountpoint, encrypted, password, remotehost):
+        pass
+
+class LocalHost(Host):
+    def __init__(self, mountroot):
+        self.mountroot = mountroot
+
+    def hostname(self):
+        return "localhost"
+
+    def available(self):
+        return True
+
+    def ismounted(self, mountpoint):
+        return os.path.ismount(self.mountroot + "/" + mountpoint)
+    
+    def targetpath(self, drive, path):
+        return "%s/%s/%s" % (self.mountroot, drive.id, path)
+
+class RemoteHost(Host):
+    def __init__(self, hostname, mountroot):
+        self._hostname = hostname
+        self.mountroot = mountroot
+
+    def hostname(self):
+        return self._hostname
+
+    def available(self):
+        return not os.system("ssh -o ConnectTimeout=5 %s echo 'nothing'" % (self._hostname))
+
+    def ismounted(self, mountpoint):
+        return not os.system("ssh %s 'mount | grep -q %s'" % (self._hostname, self.mountroot + "/" + mountpoint))
+
+    def targetpath(self, drive, path):
+        return "%s:%s/%s/%s" % (self.hostname(), self.mountroot, drive.id, path)
+
+# Finds a host object by hostname
+def findHost(hosts, hostname):
+    for host in hosts:
+        if host.hostname() == hostname:
+            return host
+    return None
+
+################################################################################
+# Drive
+
+class Drive:
+    def __init__(self, id, volumes, hosts, backups):
+        self.id = id
+        self.volumes = volumes
+        self.hosts = hosts
+        self.backups = backups
+
+    def backup(self, allhosts):
+        availablehosts = filter(lambda host: host.available(), allhosts)
+
+        # Find which host has the drive mounted
+        mountedhost = getfirst(lambda host: host.ismounted(self.id), availablehosts)
+        if not mountedhost:
+            print "Drive not found in any host."
+            return
+        print "Drive mounted on %s" % (mountedhost.hostname())
+
+        # Start doing backups
+        for backup in self.backups:
+            result = backup.backup(self, mountedhost)
+            if result:
+                break
+
+def findDrive(drives, drivetofind):
+    for drive in drives:
+        if drive.id == drivetofind:
+            return drive
+    return None
+
+################################################################################
+# Volume
+
+class Volume:
+    def __init__(self, path):
+        self.path = path
+
+# Normal drive volume
+class PlainVolume(Volume):
+    def __init__(self, path):
+        self.path = path
+
+# Encrypted volume. EncFS supported.
+class CryptVolume(Volume):
+    def __init__(self, cryptroot, plainroot, password):
+        self.cryptroot = cryptroot
+        self.plainroot = plainroot
+        self.password = password
+
+    def mount(self, drive, host):
+        # Mount if not already mounted
+        host.mountencfs(self.plainroot, self.cryptroot, self.password)
+
+
+################################################################################
+# Backup definition object
+
+class Backup:
+    def __init__(self, paths, target=None, excludes=[], sudo=False, maxdelete=1000):
+        self.paths = paths
+        self.target = target
+        self.excludes = excludes
+        self.sudo = sudo
+        self.maxdelete = maxdelete
+
+    # Runs the backup
+    def backup(self, drive, host):
+        srcpaths = reduce(lambda x,y: x+" "+y, self.paths)
+
+        if self.excludes and len(self.excludes) > 0:
+            excludeopt = reduce(lambda x,y: x+" "+y, map(lambda x: "--exclude='%s'" % x, self.excludes))
+        else:
+            excludeopt = ""
+
+        target = host.targetpath(drive, self.target)
+        print "Backing up to %s" % (target)
+
+        cmd = ""
+        if self.sudo:
+            cmd += "sudo "
+        cmd += "rsync "
+        cmd += "-av "
+        cmd += "--delete --delete-excluded "
+        cmd += "--max-delete=%s " % (self.maxdelete)
+        cmd += excludeopt + " "
+        cmd += srcpaths + " "
+        cmd += target
+
+        return _command(cmd)
+
+################################################################################
+# Runs the backup for the given configuration
+
+def flexbackup(hosts, drives, runbackup = None):
+    backupdrive = findDrive(drives, runbackup)
+    if not backupdrive:
+        print "Backup drive %s not found" % (runbackup)
+        sys.exit(1)
+
+    backupdrive.backup(hosts)
+
+################################################################################
+# Read configuration
+
+execfile(os.environ["HOME"] + "/.backup/magibackuprc.py")
+
+################################################################################
+# Main
+
+if len(sys.argv) != 2:
+    # List drives
+    print "Available drives: "
+    for drive in drives:
+        mountedon = []
+        for hostname in drive.hosts:
+            host = findHost(hosts, hostname)
+            if host.ismounted(drive.id):
+                mountedon.append(hostname)
+        print "%s on %s" % (drive.id, " ".join(mountedon))
+else:
+    # Run the backup for the given drive
+    flexbackup(hosts, drives, runbackup = sys.argv[1])

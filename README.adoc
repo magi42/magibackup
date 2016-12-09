@@ -1,0 +1,68 @@
+= MagiBackup
+
+MagiBackup is a backup utility that allows flexible mirroring to external backup drives
+mounted on multiple hosts.
+
+Features:
+
+* Declarative configuration in Python
+
+* Define includes and excludes
+
+* Backup to local and remote hosts
+
+* Finds out which drives are mounted on which hosts.
+  This is handy with portable drives.
+
+* Automatically unmount volumes after backup.
+  This is also handy with portable drives.
+
+Not implemented yet:
+
+* There is preliminary support for encrypted volumes.
+  You just need to mount the drive and the encrypted volumes are mounted automatically.
+
+== Installation
+
+There is currently no installation package.
+You just need to copy the `bin/magibackup` program to shell path, such as to `/usr/local/bin`.
+
+You need to create a configuration file as described next.
+You can find an example configuration file in `conf/magibackuprc.py`.
+
+== Configuration
+
+You need to have a `~/.backup/magibackuprc.py` file, where you define the hosts, drives, and
+backup plans.
+
+=== Host Definition
+
+You need to define a list of hosts where the drives can be mounted.
+
+[source, Python]
+----
+hosts = [LocalHost(mountroot="/media"),
+         RemoteHost("otherhostname", mountroot="/media/myuserid")]
+----
+
+== Running
+
+The backup drives must be mounted first.
+
+You can autodetect the presence of drives on different hosts by running the utility without parameters.
+
+----
+$ magibackup
+Available drives: 
+SG2TB2016 on localhost
+WDMB4T2016 on otherhost
+WD3TB2012 on 
+KtonmDuo32G on localhost
+----
+
+To make backups to a drive:
+
+----
+$ magibackup WDMB4T2016
+----
+
