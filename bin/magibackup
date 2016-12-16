@@ -130,12 +130,13 @@ class CryptVolume(Volume):
 # Backup definition object
 
 class Backup:
-    def __init__(self, paths, target=None, excludes=[], sudo=False, maxdelete=1000):
+    def __init__(self, paths, target=None, excludes=[], sudo=False, maxdelete=1000, backupdir=None):
         self.paths = paths
         self.target = target
         self.excludes = excludes
         self.sudo = sudo
         self.maxdelete = maxdelete
+        self.backupdir = backupdir
 
     # Runs the backup
     def backup(self, drive, host):
@@ -149,6 +150,11 @@ class Backup:
         target = host.targetpath(drive, self.target)
         print "Backing up to %s" % (target)
 
+        if self.backupdir:
+            backupdir = host.targetpath(drive, self.backupdir)
+        else:
+            backupdir = None
+
         cmd = ""
         if self.sudo:
             cmd += "sudo "
@@ -156,6 +162,10 @@ class Backup:
         cmd += "-av "
         cmd += "--delete --delete-excluded "
         cmd += "--max-delete=%s " % (self.maxdelete)
+        if backupdir:
+            curdate = datetime.date.today().isoformat()
+            datedbackupdir = "%s/%s" %(backupdir, curdate)
+            cmd += "--backup --backup-dir=%s " % (datedbackupdir)
         cmd += excludeopt + " "
         cmd += srcpaths + " "
         cmd += target

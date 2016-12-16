@@ -110,7 +110,14 @@ Other parameters are:
 `target`::
 Target directory relative to the mount point of the drive.
 
-`excludes`::
+`backupdir` (optional)::
+Backup directory for storing deleted or old versions of changed files.
+The path is relative to the mount point of the drive.
+Folder with (daily) timestamp will appended to the path in the ISO format, that is, `yyyy-mm-dd`.
++
+For example: `backupdir = "/mirror/deleted"`.
+
+`excludes` (optional)::
 Filename patterns to be excluded from the backup.
 The pattern syntax is the rsync exclude pattern syntax.
 
