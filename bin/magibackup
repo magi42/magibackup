@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, os
+import sys, os, logging
 
 ################################################################################
 # Utility methods
@@ -54,6 +54,7 @@ class RemoteHost(Host):
         return self._hostname
 
     def available(self):
+        logging.info("Checking availability of host '%s'" % self._hostname)
         return not os.system("ssh -o ConnectTimeout=5 %s echo 'nothing'" % (self._hostname))
 
     def ismounted(self, mountpoint):
@@ -191,10 +192,20 @@ execfile(os.environ["HOME"] + "/.backup/magibackuprc.py")
 ################################################################################
 # Main
 
+switchparsing = True
+while switchparsing:
+    if len(sys.argv) == 1 or sys.argv[1][0] != "-":
+        switchparsing = False
+        continue
+    if sys.argv[1] == "-v":
+        del sys.argv[1:2]
+        logging.basicConfig(level=logging.INFO)
+
 if len(sys.argv) != 2:
     # List drives
     print "Available drives: "
     for drive in drives:
+        logging.info("Checking availability of drive %s" % drive.id)
         mountedon = []
         for hostname in drive.hosts:
             host = findHost(hosts, hostname)
