@@ -142,3 +142,8 @@ To make backups to a drive:
 $ magibackup WDMB4T2016
 ----
 
+=== Command-Line Options
+
+`-v`::
+Enables verbose output.
+Outputs also INFO-level log messages to the standard output.
