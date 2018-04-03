@@ -123,7 +123,8 @@ The pattern syntax is the rsync exclude pattern syntax.
 
 == Running
 
-The backup drives must be mounted first.
+The utility does not currently mount the backup drives.
+You must mount them manually.
 
 You can autodetect the presence of drives on different hosts by running the utility without parameters.
 

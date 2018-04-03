@@ -29,6 +29,12 @@ class Host:
     def mountencfs(mountpoint, encrypted, password, remotehost):
         pass
 
+    def mountluks(mountpoint, path, remotehost):
+        devpath = "/dev/sda1"
+        # https://askubuntu.com/questions/63594/mount-encrypted-volumes-from-command-line
+        cmd = "cryptsetup luksOpen %{devpath} %{volumelabel}"
+        pass
+
 class LocalHost(Host):
     def __init__(self, mountroot):
         self.mountroot = mountroot
@@ -41,7 +47,7 @@ class LocalHost(Host):
 
     def ismounted(self, mountpoint):
         return os.path.ismount(self.mountroot + "/" + mountpoint)
-    
+
     def targetpath(self, drive, path):
         return "%s/%s/%s" % (self.mountroot, drive.id, path)
 
@@ -55,10 +61,10 @@ class RemoteHost(Host):
 
     def available(self):
         logging.info("Checking availability of host '%s'" % self._hostname)
-        return not os.system("ssh -o ConnectTimeout=5 %s echo 'nothing'" % (self._hostname))
+        return not os.system("ssh -q -o ConnectTimeout=5 %s echo 'nothing'" % (self._hostname))
 
     def ismounted(self, mountpoint):
-        return not os.system("ssh %s 'mount | grep -q %s'" % (self._hostname, self.mountroot + "/" + mountpoint))
+        return not os.system("ssh -q %s 'mount | grep -q %s'" % (self._hostname, self.mountroot + "/" + mountpoint))
 
     def targetpath(self, drive, path):
         return "%s:%s/%s/%s" % (self.hostname(), self.mountroot, drive.id, path)
@@ -116,7 +122,7 @@ class PlainVolume(Volume):
         self.path = path
 
 # Encrypted volume. EncFS supported.
-class CryptVolume(Volume):
+class EncFSVolume(Volume):
     def __init__(self, cryptroot, plainroot, password):
         self.cryptroot = cryptroot
         self.plainroot = plainroot
@@ -125,6 +131,16 @@ class CryptVolume(Volume):
     def mount(self, drive, host):
         # Mount if not already mounted
         host.mountencfs(self.plainroot, self.cryptroot, self.password)
+
+# Encrypted volume. EncFS supported.
+class LUKSVolume(Volume):
+    def __init__(self, path, password):
+        self.path = path
+        self.password = password
+
+    def mount(self, drive, host):
+        # Mount if not already mounted
+        host.mountluks(drive, self.path, self.password)
 
 
 ################################################################################
@@ -162,7 +178,7 @@ class Backup:
         cmd += "rsync "
         cmd += "-av "
         cmd += "--delete --delete-excluded "
-        cmd += "--max-delete=%s " % (self.maxdelete)
+        cmd += "--max-delete=%d " % (self.maxdelete)
         if backupdir:
             curdate = datetime.date.today().isoformat()
             datedbackupdir = "%s/%s" %(backupdir, curdate)
